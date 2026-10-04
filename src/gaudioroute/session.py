@@ -1,4 +1,4 @@
-"""The ``chroute run`` main loop: start the engine, watch it, draw the meter, summarize."""
+"""The ``gaudioroute run`` main loop: start the engine, watch it, draw the meter, summarize."""
 
 from __future__ import annotations
 
@@ -6,11 +6,11 @@ import signal
 import sys
 import time
 
-from chroute.devices import format_rate, list_devices, match_device
-from chroute.engine import XRUN_FIELDS, Engine, EngineError
-from chroute.meter import MeterState, PeakDecay, TerminalMeter, render
-from chroute.presets import Settings
-from chroute.routing import build_plan, parse_routes, validate_routes
+from gaudioroute.devices import format_rate, list_devices, match_device
+from gaudioroute.engine import XRUN_FIELDS, Engine, EngineError
+from gaudioroute.meter import MeterState, PeakDecay, TerminalMeter, render
+from gaudioroute.presets import Settings
+from gaudioroute.routing import build_plan, parse_routes, validate_routes
 
 FRAME_INTERVAL = 0.1  # meter redraw, seconds
 RATE_CHECK_INTERVAL = 2.0
@@ -93,14 +93,14 @@ def run_session(settings: Settings, show_meter: bool = True) -> int:
     if meter is None:
         lat = engine.latency_ms
         print(
-            f"chroute: {in_dev.name} → {out_dev.name}, {format_rate(engine.stream_rate)} confirmed, "
+            f"gaudioroute: {in_dev.name} → {out_dev.name}, {format_rate(engine.stream_rate)} confirmed, "
             f"block {settings.blocksize}"
             + (f", latency in {lat[0]:.1f} ms / out {lat[1]:.1f} ms" if lat else "")
             + ". Ctrl-C to stop.",
             flush=True,
         )
         for msg in warnings.values():
-            print(f"chroute: WARNING: {msg}", flush=True)
+            print(f"gaudioroute: WARNING: {msg}", flush=True)
 
     start = time.monotonic()
     next_rate_check = start + RATE_CHECK_INTERVAL
@@ -130,7 +130,7 @@ def run_session(settings: Settings, show_meter: bool = True) -> int:
                 if gone:
                     raise _Stop(_disconnect_msg(gone))
                 if "stall" not in warnings:
-                    log(f"chroute: WARNING: no audio for {STALL_TIMEOUT:.0f}+ s")
+                    log(f"gaudioroute: WARNING: no audio for {STALL_TIMEOUT:.0f}+ s")
                 warnings["stall"] = f"audio callbacks stopped {now - last_cb_time:.0f} s ago"
 
             if now >= next_rate_check:
@@ -144,19 +144,19 @@ def run_session(settings: Settings, show_meter: bool = True) -> int:
                     if name in current and key not in warnings:
                         msg = (
                             f"{current[name].message(settings.rate)}! Another app changed it. "
-                            f"Quit that app and restart chroute."
+                            f"Quit that app and restart gaudioroute."
                         )
                         warnings[key] = msg
                         events.append(f"{_fmt_duration(elapsed)}  {current[name].message(settings.rate)}")
-                        log(f"chroute: WARNING: {msg}")
+                        log(f"gaudioroute: WARNING: {msg}")
                     elif name not in current and key in warnings:
                         del warnings[key]
                         events.append(f"{_fmt_duration(elapsed)}  {name} back at {format_rate(settings.rate)}")
-                        log(f"chroute: {name} is back at {format_rate(settings.rate)}")
+                        log(f"gaudioroute: {name} is back at {format_rate(settings.rate)}")
 
             if not notes and elapsed > SILENCE_HINT_AFTER and max_input_seen < SILENCE_PEAK:
                 notes.append(SILENCE_HINT)
-                log(f"chroute: hint: {SILENCE_HINT}")
+                log(f"gaudioroute: hint: {SILENCE_HINT}")
 
             if meter is not None:
                 st = MeterState(
@@ -192,8 +192,8 @@ def run_session(settings: Settings, show_meter: bool = True) -> int:
     xruns = dict(zip(XRUN_FIELDS, engine.xruns.tolist()))
     clips = engine.router.clip_counts[out_cols].tolist()
     if stop is not None:
-        print(f"\nchroute: {stop.reason}", file=sys.stderr)
-    print(f"\nchroute stopped after {_fmt_duration(runtime)}.")
+        print(f"\ngaudioroute: {stop.reason}", file=sys.stderr)
+    print(f"\ngaudioroute stopped after {_fmt_duration(runtime)}.")
     print(
         f"  xruns: {sum(xruns.values())} ("
         + ", ".join(f"{k.replace('_', ' ')} {v}" for k, v in xruns.items())

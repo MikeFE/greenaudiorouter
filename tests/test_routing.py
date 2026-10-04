@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from chroute.routing import (
+from gaudioroute.routing import (
     Route,
     RouteError,
     Router,

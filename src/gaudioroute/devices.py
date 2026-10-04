@@ -7,7 +7,7 @@ import subprocess
 from dataclasses import dataclass
 from typing import Literal
 
-from chroute import coreaudio
+from gaudioroute import coreaudio
 
 Kind = Literal["input", "output"]
 

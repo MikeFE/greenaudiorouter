@@ -79,7 +79,7 @@ def render(st: MeterState) -> list[Line]:
         f"out underflow {st.xruns.get('output_underflow', 0)})"
     )
     lines = [
-        Line(f"chroute  {st.in_name} → {st.out_name}   {_fmt_elapsed(st.elapsed)}   Ctrl-C to stop", _BOLD),
+        Line(f"gaudioroute  {st.in_name} → {st.out_name}   {_fmt_elapsed(st.elapsed)}   Ctrl-C to stop", _BOLD),
         Line(f"rate {rate} ({'confirmed' if st.rate_ok else 'MISMATCH'})  block {st.blocksize}{lat}", rate_style),
         Line(xr, _YELLOW if xr_total else _DIM),
         Line(""),

@@ -2,8 +2,8 @@ import math
 
 import pytest
 
-from chroute.cli import build_parser, normalize_argv
-from chroute.meter import bar, format_db, render, MeterState, PeakDecay, to_db
+from gaudioroute.cli import build_parser, normalize_argv
+from gaudioroute.meter import bar, format_db, render, MeterState, PeakDecay, to_db
 
 
 @pytest.mark.parametrize(

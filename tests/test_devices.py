@@ -1,6 +1,6 @@
 import pytest
 
-from chroute.devices import Device, DeviceError, match_device
+from gaudioroute.devices import Device, DeviceError, match_device
 
 DEVICES = [
     Device(0, "Mike’s iPhone Microphone", "Core Audio", 1, 0, 48000.0),

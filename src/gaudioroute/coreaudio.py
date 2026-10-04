@@ -48,7 +48,7 @@ def _libs():
     ca_path = ctypes.util.find_library("CoreAudio")
     cf_path = ctypes.util.find_library("CoreFoundation")
     if not ca_path or not cf_path:
-        raise CoreAudioError("CoreAudio framework not found (chroute only runs on macOS)")
+        raise CoreAudioError("CoreAudio framework not found (gaudioroute only runs on macOS)")
     ca = ctypes.CDLL(ca_path)
     cf = ctypes.CDLL(cf_path)
     ca.AudioObjectGetPropertyDataSize.argtypes = [

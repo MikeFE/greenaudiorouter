@@ -7,9 +7,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from chroute import devices
-from chroute.devices import Device, format_rate, format_rate_ranges
-from chroute.routing import Router, RoutingPlan
+from gaudioroute import devices
+from gaudioroute.devices import Device, format_rate, format_rate_ranges
+from gaudioroute.routing import Router, RoutingPlan
 
 # Order of the counters in Engine.xruns.
 XRUN_FIELDS = ("input_overflow", "input_underflow", "output_underflow", "output_overflow")

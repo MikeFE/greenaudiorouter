@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-DEFAULT_PATH = Path("~/.config/chroute/presets.toml").expanduser()
+DEFAULT_PATH = Path("~/.config/gaudioroute/presets.toml").expanduser()
 DEFAULT_RATE = 48000
 DEFAULT_BLOCKSIZE = 128
 DEFAULT_LATENCY = "low"

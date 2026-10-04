@@ -1,5 +1,5 @@
-# Copy to ~/.config/chroute/presets.toml
-#   mkdir -p ~/.config/chroute && cp presets.example.toml ~/.config/chroute/presets.toml
+# Copy to ~/.config/gaudioroute/presets.toml
+#   mkdir -p ~/.config/gaudioroute && cp presets.example.toml ~/.config/gaudioroute/presets.toml
 #
 # Keys: in, out, routes, rate (default 48000), blocksize (default 128),
 #       latency ("low" (default), "high", or seconds like 0.005).

@@ -1,11 +1,11 @@
-# chroute
+# gaudioroute
 
 A small command-line audio channel router for macOS. It takes any input
 channel(s) of one CoreAudio device and plays them, in real time, on any output
 channel(s) of another. Think of it as a minimal, terminal-only Loopback.
 
 ```
-chroute --in Scarlett --out BlackHole --route 2:1 --route 2:2 --rate 48000
+gaudioroute --in Scarlett --out BlackHole --route 2:1 --route 2:2 --rate 48000
 ```
 
 This sends Scarlett input 2 (the instrument jack) to both BlackHole channels,
@@ -21,24 +21,24 @@ With a plain venv:
 ```sh
 python3 -m venv .venv
 .venv/bin/pip install -e '.[dev]'
-.venv/bin/chroute list
+.venv/bin/gaudioroute list
 ```
 
 Or with uv:
 
 ```sh
-uv run chroute list            # run from the checkout
-uv tool install -e .           # put `chroute` on your PATH
+uv run gaudioroute list            # run from the checkout
+uv tool install -e .           # put `gaudioroute` on your PATH
 ```
 
-`python -m chroute` also works.
+`python -m gaudioroute` also works.
 
-The first time chroute opens an input, macOS asks whether your terminal app
+The first time gaudioroute opens an input, macOS asks whether your terminal app
 may use the microphone. Say yes. If you said no earlier, see Troubleshooting.
 
 ## Usage
 
-### `chroute list`
+### `gaudioroute list`
 
 ```
   #  Name                      Host API     In  Out  Default rate  Nominal rate
@@ -49,7 +49,7 @@ may use the microphone. Say yes. If you said no earlier, see Troubleshooting.
 *Nominal rate* is the rate the device is actually running at right now, as
 macOS reports it (the value Audio MIDI Setup shows).
 
-### `chroute run` (the default command)
+### `gaudioroute run` (the default command)
 
 | Flag | Meaning |
 |---|---|
@@ -62,12 +62,12 @@ macOS reports it (the value Audio MIDI Setup shows).
 | `--preset NAME` | Load settings from the presets file. Flags override the preset. |
 | `--no-meter` | No live meter; plain log lines instead. |
 
-`chroute --preset rocksmith` is the same as `chroute run --preset rocksmith`.
+`gaudioroute --preset rocksmith` is the same as `gaudioroute run --preset rocksmith`.
 
 Routing rules:
 
 - One input can feed several outputs (fan-out), and several routes into one
-  output are **summed** (fan-in), so chroute also works as a simple mixer.
+  output are **summed** (fan-in), so gaudioroute also works as a simple mixer.
 - Output channels with no route get silence.
 - After summing, every output sample is hard-clipped to [-1, 1]. The meter
   counts clip events per output: one event is one audio block (128 frames by
@@ -77,7 +77,7 @@ Routing rules:
 
 ### Presets
 
-`~/.config/chroute/presets.toml`:
+`~/.config/gaudioroute/presets.toml`:
 
 ```toml
 [rocksmith]
@@ -93,15 +93,15 @@ Precedence is command line > preset > built-in default. `--route` on the
 command line *replaces* the preset's routes; it doesn't add to them.
 
 ```sh
-mkdir -p ~/.config/chroute && cp presets.example.toml ~/.config/chroute/presets.toml
-chroute presets           # list them
-chroute --preset rocksmith
+mkdir -p ~/.config/gaudioroute && cp presets.example.toml ~/.config/gaudioroute/presets.toml
+gaudioroute presets           # list them
+gaudioroute --preset rocksmith
 ```
 
 ### The meter
 
 ```
-chroute  Scarlett Solo USB → BlackHole 2ch   0:12:04   Ctrl-C to stop
+gaudioroute  Scarlett Solo USB → BlackHole 2ch   0:12:04   Ctrl-C to stop
 rate 48,000 Hz (confirmed)  block 128  latency in 53.8 ms / out 10.7 ms
 xruns 0  (in overflow 0, out underflow 0)
 
@@ -119,7 +119,7 @@ sample-rate events).
 
 ## How the sample rate is enforced and verified
 
-This is what GarageBand got wrong, so chroute never assumes the rate:
+This is what GarageBand got wrong, so gaudioroute never assumes the rate:
 
 1. **Before opening:** it checks that both devices list `--rate` among their
    supported nominal rates.
@@ -130,7 +130,7 @@ This is what GarageBand got wrong, so chroute never assumes the rate:
 3. **After opening:** it confirms the stream's rate equals `--rate`, and reads
    each device's `kAudioDevicePropertyNominalSampleRate` straight from
    CoreAudio (via ctypes; `system_profiler` is the fallback). If either device
-   is at the wrong rate, chroute exits with an error.
+   is at the wrong rate, gaudioroute exits with an error.
 4. **While running:** it rereads both nominal rates every 2 s. If another app
    changes one, the meter shows a red warning with the device name and its
    real rate. The event also goes in the exit summary.
@@ -153,25 +153,25 @@ watch the xrun counter. Rocksmith's own latency calibration also helps.
 
 ## Manual test plan (needs the hardware)
 
-1. **`chroute list`.** Expect `Scarlett Solo USB` and `BlackHole 2ch`, each
+1. **`gaudioroute list`.** Expect `Scarlett Solo USB` and `BlackHole 2ch`, each
    with `2` in and `2` out.
-2. **`chroute --preset rocksmith`** (after copying `presets.example.toml`).
+2. **`gaudioroute --preset rocksmith`** (after copying `presets.example.toml`).
    Expect rows `in 2 → out 1` and `in 2 → out 2`. Strumming moves both bars to
    roughly -30 to -6 dBFS, depending on the Scarlett's gain knob. At rest they
    sit near the noise floor (around -60 dBFS or lower). The status line says
    `48,000 Hz (confirmed)`.
-3. **Audio MIDI Setup** (while chroute runs). Expect both Scarlett Solo USB
+3. **Audio MIDI Setup** (while gaudioroute runs). Expect both Scarlett Solo USB
    and BlackHole 2ch to show **48,000 Hz**.
 4. **QuickTime → File → New Audio Recording**, with BlackHole 2ch picked as
    the input (the ⌄ next to the record button). Expect QuickTime's level meter
    to move with the guitar.
-5. **Start Rocksmith *after* chroute is running.** Pick Microphone mode and
+5. **Start Rocksmith *after* gaudioroute is running.** Pick Microphone mode and
    select BlackHole. Expect the calibration screen to respond to strumming.
 6. **Soak test:** leave it running 30+ minutes at `--blocksize 128`. Expect
    the xrun counter to stay at or near 0. If it climbs steadily, try
    `--latency high` or `--blocksize 256`. Steady growth over hours can also be
    clock drift between the two devices (see the drift-free stretch goal).
-7. **Open GarageBand while chroute runs.** If GarageBand moves BlackHole to
+7. **Open GarageBand while gaudioroute runs.** If GarageBand moves BlackHole to
    44.1 kHz, expect within about 2 s a red line
    `!! BlackHole 2ch is at 44,100 Hz, not 48,000 Hz! Another app changed it…`,
    and the rate line switching to `MISMATCH`. The input-overflow count rises
@@ -186,9 +186,9 @@ watch the xrun counter. Rocksmith's own latency calibration also helps.
   permission, macOS delivers exact digital silence, so the meter shows `-inf`.
 - **"Couldn't open … without resampling"**: another app is holding a device
   at a different rate. Quit it, or set 48 kHz in Audio MIDI Setup, and retry.
-- **Device unplugged mid-run:** chroute notices within about 2 s, prints which
+- **Device unplugged mid-run:** gaudioroute notices within about 2 s, prints which
   device disappeared, and exits with code 1.
-- **Ambiguous device name:** chroute lists the matches; use more of the name.
+- **Ambiguous device name:** gaudioroute lists the matches; use more of the name.
 
 ## Development
 

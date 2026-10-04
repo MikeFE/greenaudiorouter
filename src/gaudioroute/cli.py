@@ -5,11 +5,11 @@ from __future__ import annotations
 import argparse
 import sys
 
-from chroute import __version__
-from chroute.devices import DeviceError, format_rate, list_devices, nominal_rates
-from chroute.engine import EngineError
-from chroute.presets import DEFAULT_PATH, PresetError, get_preset, load_presets, parse_latency, resolve_settings
-from chroute.routing import RouteError
+from gaudioroute import __version__
+from gaudioroute.devices import DeviceError, format_rate, list_devices, nominal_rates
+from gaudioroute.engine import EngineError
+from gaudioroute.presets import DEFAULT_PATH, PresetError, get_preset, load_presets, parse_latency, resolve_settings
+from gaudioroute.routing import RouteError
 
 SUBCOMMANDS = {"list", "presets", "run"}
 
@@ -47,7 +47,7 @@ def cmd_presets(args: argparse.Namespace) -> int:
 
 
 def cmd_run(args: argparse.Namespace) -> int:
-    from chroute.session import run_session
+    from gaudioroute.session import run_session
 
     preset = get_preset(args.preset) if args.preset else None
     settings = resolve_settings(
@@ -81,12 +81,12 @@ def _latency(s: str) -> str | float:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="chroute",
+        prog="gaudioroute",
         description="Route audio from any input channel(s) of one CoreAudio device "
         "to any output channel(s) of another.",
-        epilog="Running 'chroute' with run flags but no subcommand is the same as 'chroute run'.",
+        epilog="Running 'gaudioroute' with run flags but no subcommand is the same as 'gaudioroute run'.",
     )
-    parser.add_argument("--version", action="version", version=f"chroute {__version__}")
+    parser.add_argument("--version", action="version", version=f"gaudioroute {__version__}")
     sub = parser.add_subparsers(dest="command", metavar="{list,presets,run}")
 
     p_list = sub.add_parser("list", help="list audio devices")
@@ -99,7 +99,7 @@ def build_parser() -> argparse.ArgumentParser:
         "run",
         help="route audio (default command)",
         description="Route input channels of one device to output channels of another.",
-        epilog="Example: chroute --in Scarlett --out BlackHole --route 2:1 --route 2:2 --rate 48000",
+        epilog="Example: gaudioroute --in Scarlett --out BlackHole --route 2:1 --route 2:2 --rate 48000",
     )
     p_run.add_argument("--in", dest="in_name", metavar="NAME", help="input device (case-insensitive substring)")
     p_run.add_argument("--out", dest="out_name", metavar="NAME", help="output device (case-insensitive substring)")
@@ -126,7 +126,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def normalize_argv(argv: list[str]) -> list[str]:
-    """Make ``run`` the default subcommand: ``chroute --preset x`` == ``chroute run --preset x``."""
+    """Make ``run`` the default subcommand: ``gaudioroute --preset x`` == ``gaudioroute run --preset x``."""
     if argv and argv[0] not in SUBCOMMANDS and argv[0] not in ("-h", "--help", "--version"):
         return ["run", *argv]
     return argv
@@ -142,5 +142,5 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return args.func(args)
     except (DeviceError, PresetError, RouteError, EngineError) as e:
-        print(f"chroute: error: {e}", file=sys.stderr)
+        print(f"gaudioroute: error: {e}", file=sys.stderr)
         return 2

@@ -1,6 +1,6 @@
 import pytest
 
-from chroute.presets import (
+from gaudioroute.presets import (
     DEFAULT_BLOCKSIZE,
     DEFAULT_RATE,
     PresetError,
