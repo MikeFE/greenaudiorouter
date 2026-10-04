@@ -122,18 +122,26 @@ def nominal_rate(name: str) -> float | None:
     return nominal_rates().get(name)
 
 
-def available_rates(name: str) -> list[float] | None:
-    """Discrete nominal rates the device supports, or None if unknown."""
+def available_rates(name: str) -> list[tuple[float, float]] | None:
+    """Nominal rate ranges (min, max) the device supports, or None if unknown."""
     try:
         dev = coreaudio.find_device_id(name)
         if dev is None:
             return None
-        rates: set[float] = set()
-        for lo, hi in coreaudio.available_rates(dev):
-            rates.update({lo, hi})
-        return sorted(rates)
+        return coreaudio.available_rates(dev)
     except (coreaudio.CoreAudioError, OSError):
         return None
+
+
+def supports_rate(ranges: list[tuple[float, float]], rate: float) -> bool:
+    return any(lo - 0.5 <= rate <= hi + 0.5 for lo, hi in ranges)
+
+
+def format_rate_ranges(ranges: list[tuple[float, float]]) -> str:
+    parts = []
+    for lo, hi in sorted(set(ranges)):
+        parts.append(f"{lo:,.0f}" if lo == hi else f"{lo:,.0f}-{hi:,.0f}")
+    return ", ".join(parts) + " Hz"
 
 
 def device_present(name: str) -> bool | None:

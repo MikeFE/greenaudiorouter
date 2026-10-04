@@ -10,8 +10,9 @@ from typing import Any
 DEFAULT_PATH = Path("~/.config/chroute/presets.toml").expanduser()
 DEFAULT_RATE = 48000
 DEFAULT_BLOCKSIZE = 128
+DEFAULT_LATENCY = "low"
 
-_KEYS = {"in": str, "out": str, "rate": int, "blocksize": int, "routes": list}
+_KEYS = {"in": str, "out": str, "rate": int, "blocksize": int, "routes": list, "latency": (str, int, float)}
 
 
 class PresetError(Exception):
@@ -39,9 +40,13 @@ def load_presets(path: Path = DEFAULT_PATH) -> dict[str, dict[str, Any]]:
             expected = _KEYS[key]
             # bool is a subclass of int; don't accept rate = true.
             if not isinstance(value, expected) or isinstance(value, bool):
-                raise PresetError(
-                    f"{path}: preset [{name}] key '{key}' must be {expected.__name__}, got {value!r}"
-                )
+                kind = "a number or 'low'/'high'" if key == "latency" else expected.__name__
+                raise PresetError(f"{path}: preset [{name}] key '{key}' must be {kind}, got {value!r}")
+        if "latency" in table:
+            try:
+                table["latency"] = parse_latency(table["latency"])
+            except ValueError as e:
+                raise PresetError(f"{path}: preset [{name}]: {e}") from None
         if "routes" in table and not all(isinstance(r, str) for r in table["routes"]):
             raise PresetError(f"{path}: preset [{name}] routes must be strings like \"2:1\"")
         presets[name] = table
@@ -58,6 +63,21 @@ def get_preset(name: str, path: Path = DEFAULT_PATH) -> dict[str, Any]:
     raise PresetError(f"Preset '{name}' not found in {path}. Available: {avail}")
 
 
+def parse_latency(value: str | float) -> str | float:
+    """'low', 'high', or a latency in seconds (e.g. 0.005)."""
+    if isinstance(value, str):
+        v = value.strip().lower()
+        if v in ("low", "high"):
+            return v
+        try:
+            value = float(v)
+        except ValueError:
+            raise ValueError(f"latency must be 'low', 'high', or seconds like 0.005, got {value!r}") from None
+    if not (value >= 0 and value < 10):
+        raise ValueError(f"latency must be between 0 and 10 seconds, got {value!r}")
+    return float(value)
+
+
 @dataclass(frozen=True)
 class Settings:
     in_name: str
@@ -65,6 +85,7 @@ class Settings:
     routes: list[str]
     rate: int
     blocksize: int
+    latency: str | float = DEFAULT_LATENCY
 
 
 def resolve_settings(
@@ -74,6 +95,7 @@ def resolve_settings(
     routes: list[str] | None = None,
     rate: int | None = None,
     blocksize: int | None = None,
+    latency: str | float | None = None,
     preset: dict[str, Any] | None = None,
 ) -> Settings:
     """Merge settings: CLI flags win over the preset, which wins over defaults.
@@ -87,6 +109,7 @@ def resolve_settings(
     merged_routes = routes if routes else p.get("routes", [])
     merged_rate = rate if rate is not None else p.get("rate", DEFAULT_RATE)
     merged_block = blocksize if blocksize is not None else p.get("blocksize", DEFAULT_BLOCKSIZE)
+    merged_latency = latency if latency is not None else p.get("latency", DEFAULT_LATENCY)
 
     missing = [flag for flag, v in (("--in", merged_in), ("--out", merged_out)) if not v]
     if missing:
@@ -97,4 +120,6 @@ def resolve_settings(
         raise PresetError(f"sample rate must be positive, got {merged_rate}")
     if merged_block <= 0:
         raise PresetError(f"blocksize must be positive, got {merged_block}")
-    return Settings(merged_in, merged_out, list(merged_routes), int(merged_rate), int(merged_block))
+    return Settings(
+        merged_in, merged_out, list(merged_routes), int(merged_rate), int(merged_block), merged_latency
+    )

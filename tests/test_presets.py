@@ -6,6 +6,7 @@ from chroute.presets import (
     PresetError,
     get_preset,
     load_presets,
+    parse_latency,
     resolve_settings,
 )
 
@@ -125,3 +126,36 @@ def test_no_preset_cli_only():
 def test_resolve_errors(kwargs, match):
     with pytest.raises(PresetError, match=match):
         resolve_settings(**kwargs)
+
+
+@pytest.mark.parametrize("value,expected", [("low", "low"), ("HIGH", "high"), ("0.005", 0.005), (0, 0.0), (0.01, 0.01)])
+def test_parse_latency(value, expected):
+    assert parse_latency(value) == expected
+
+
+@pytest.mark.parametrize("value", ["fast", "-1", 11, "nan"])
+def test_parse_latency_invalid(value):
+    with pytest.raises(ValueError):
+        parse_latency(value)
+
+
+def test_latency_from_preset_and_override(tmp_path):
+    p = tmp_path / "presets.toml"
+    p.write_text('[x]\nin = "a"\nout = "b"\nroutes = ["1:1"]\nlatency = 0.004\n')
+    assert resolve_settings(preset=get_preset("x", p)).latency == 0.004
+    assert resolve_settings(latency="high", preset=get_preset("x", p)).latency == "high"
+    assert resolve_settings(in_name="a", out_name="b", routes=["1:1"]).latency == "low"
+
+
+def test_bad_latency_in_preset(tmp_path):
+    p = tmp_path / "presets.toml"
+    p.write_text('[x]\nlatency = "fast"\n')
+    with pytest.raises(PresetError, match="latency"):
+        load_presets(p)
+
+
+def test_example_presets_file_is_valid():
+    from pathlib import Path
+
+    presets = load_presets(Path(__file__).parent.parent / "presets.example.toml")
+    assert presets["rocksmith"]["routes"] == ["2:1", "2:2"]
