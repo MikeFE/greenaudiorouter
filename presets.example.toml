@@ -1,0 +1,21 @@
+# Copy to ~/.config/chroute/presets.toml
+#   mkdir -p ~/.config/chroute && cp presets.example.toml ~/.config/chroute/presets.toml
+#
+# Keys: in, out, routes, rate (default 48000), blocksize (default 128),
+#       latency ("low" (default), "high", or seconds like 0.005).
+# Command-line flags override preset values; --route replaces the preset's routes.
+
+# Scarlett Solo instrument jack (input 2) -> both BlackHole channels, for
+# Rocksmith 2014's Microphone mode.
+[rocksmith]
+in = "Scarlett"
+out = "BlackHole"
+rate = 48000
+blocksize = 128
+routes = ["2:1", "2:2"]
+
+# Guitar on the left, mic at half level on the right.
+[guitar-and-mic]
+in = "Scarlett"
+out = "BlackHole"
+routes = ["2:1", "1:2@0.5"]
