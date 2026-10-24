@@ -8,10 +8,10 @@ channel(s) of another. Think of it as a minimal, terminal-only Loopback.
 
 I wanted to play Rocksmith 2014 on macOS in Microphone mode with a Scarlett
 Solo audio interface. The problem is that Rocksmith only listens to **channel 1**
-of the device you pick. On the Solo, channel 1 is the XLR mic input, and the
-guitar's instrument jack is **channel 2**. If you select the Scarlett directly,
+of the device you pick. On my audio interface, ch 1 is the XLR mic input, and the
+guitar's instrument jack is **channel 2**. If you select the interface directly,
 Rocksmith hears the empty mic socket and nothing else, and neither Rocksmith nor
-the Scarlett lets you swap the channels.
+the audio interface let you swap the channels.
 
 So the guitar has to be moved onto channel 1 of *some* device that Rocksmith
 can select. [BlackHole 2ch](https://existential.audio/blackhole/) provides that
