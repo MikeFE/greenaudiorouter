@@ -4,6 +4,13 @@ A small command-line audio channel router for macOS. It takes any input
 channel(s) of one CoreAudio device and plays them, in real time, on any output
 channel(s) of another. Think of it as a minimal, terminal-only Loopback.
 
+# Why?
+
+Because I have an audio interface I wanted to use with Rocksmith 2014 on MacOS.
+However, it only outputs the guitar sound on channel 2, while Rocksmith only
+reads channel 1 by default. This project allowed me to re-route my ch 2 to 
+a virtual device's channel 1 (e.g. `BlackHole 2ch`)
+
 ```
 gaudioroute --in Scarlett --out BlackHole --route 2:1 --route 2:2 --rate 48000
 ```
