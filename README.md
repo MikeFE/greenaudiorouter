@@ -4,20 +4,31 @@ A small command-line audio channel router for macOS. It takes any input
 channel(s) of one CoreAudio device and plays them, in real time, on any output
 channel(s) of another. Think of it as a minimal, terminal-only Loopback.
 
-# Why?
+## Why?
 
-Because I have an audio interface I wanted to use with Rocksmith 2014 on MacOS.
-However, it only outputs the guitar sound on channel 2, while Rocksmith only
-reads channel 1 by default. This project allowed me to re-route my ch 2 to 
-a virtual device's channel 1 (e.g. `BlackHole 2ch`)
+I wanted to play Rocksmith 2014 on macOS in Microphone mode with a Scarlett
+Solo audio interface. The problem is that Rocksmith only listens to **channel 1**
+of the device you pick. On the Solo, channel 1 is the XLR mic input, and the
+guitar's instrument jack is **channel 2**. If you select the Scarlett directly,
+Rocksmith hears the empty mic socket and nothing else, and neither Rocksmith nor
+the Scarlett lets you swap the channels.
+
+So the guitar has to be moved onto channel 1 of *some* device that Rocksmith
+can select. [BlackHole 2ch](https://existential.audio/blackhole/) provides that
+device. It's a virtual cable: whatever is played into its output channel N
+comes out of its input channel N. gaudioroute does the moving:
+
+```
+Scarlett in 2 (guitar) ──gaudioroute──▶ BlackHole 1 & 2 ──▶ Rocksmith (mic: BlackHole)
+```
 
 ```
 gaudioroute --in Scarlett --out BlackHole --route 2:1 --route 2:2 --rate 48000
 ```
 
-This sends Scarlett input 2 (the instrument jack) to both BlackHole channels,
-with **both devices forced to 48 kHz**, so Rocksmith 2014's Microphone mode
-(which only listens to channel 1) hears the guitar.
+It also locks both devices to **48 kHz**, which Rocksmith needs. Routing through
+GarageBand also gets the signal through, but GarageBand switches BlackHole to
+44.1 kHz and then Rocksmith won't calibrate.
 
 ## Install
 
@@ -38,66 +49,45 @@ uv run gaudioroute list            # run from the checkout
 uv tool install -e .           # put `gaudioroute` on your PATH
 ```
 
-`python -m gaudioroute` also works.
-
 The first time gaudioroute opens an input, macOS asks whether your terminal app
 may use the microphone. Say yes. If you said no earlier, see Troubleshooting.
 
 ## Usage
 
-### `gaudioroute list`
+`gaudioroute list` shows your devices, their channel counts and the sample
+rate each one is currently running at.
 
-```
-  #  Name                      Host API     In  Out  Default rate  Nominal rate
-  1  Scarlett Solo USB         Core Audio    2    2     48,000 Hz     48,000 Hz
-  2  BlackHole 2ch             Core Audio    2    2     48,000 Hz     48,000 Hz
-```
-
-*Nominal rate* is the rate the device is actually running at right now, as
-macOS reports it (the value Audio MIDI Setup shows).
-
-### `gaudioroute run` (the default command)
+`gaudioroute run` (the default command) starts routing:
 
 | Flag | Meaning |
 |---|---|
-| `--in NAME` | Input device: a case-insensitive substring of its name. |
+| `--in NAME` | Input device (any part of its name, case-insensitive). |
 | `--out NAME` | Output device, matched the same way. |
-| `--route X:Y[@GAIN]` | Input channel X → output channel Y, **1-based**. Optional linear gain (`2:1@0.8`). Repeatable. |
-| `--rate HZ` | Sample rate forced on both devices. Default 48000. |
+| `--route X:Y[@GAIN]` | Input channel X → output channel Y, counting from 1. Optional gain, e.g. `2:1@0.8`. Repeatable. |
+| `--rate HZ` | Sample rate for both devices. Default 48000. |
 | `--blocksize N` | Frames per callback. Default 128. |
-| `--latency L` | PortAudio latency hint: `low` (default), `high`, or seconds such as `0.005`. See Latency. |
-| `--preset NAME` | Load settings from the presets file. Flags override the preset. |
-| `--no-meter` | No live meter; plain log lines instead. |
+| `--latency L` | `low` (default), `high`, or seconds such as `0.003`. |
+| `--preset NAME` | Load settings from a preset. Flags override it. |
+| `--no-meter` | Plain log lines instead of the live meter. |
 
-`gaudioroute --preset rocksmith` is the same as `gaudioroute run --preset rocksmith`.
+One input can feed several outputs, and routes into the same output are mixed
+together. Output channels with no route stay silent.
 
-Routing rules:
-
-- One input can feed several outputs (fan-out), and several routes into one
-  output are **summed** (fan-in), so gaudioroute also works as a simple mixer.
-- Output channels with no route get silence.
-- After summing, every output sample is hard-clipped to [-1, 1]. The meter
-  counts clip events per output: one event is one audio block (128 frames by
-  default) in which that channel went over full scale.
-- Only the channels the routes need are opened (`--route 2:1` opens inputs
-  1–2 and output 1).
+While it runs, a live meter shows the level of each route, plus counters for
+dropouts (xruns) and clipping. If another app changes either device's sample
+rate, the meter shows a red warning. Press Ctrl-C to stop.
 
 ### Presets
 
-`~/.config/gaudioroute/presets.toml`:
+Save settings in `~/.config/gaudioroute/presets.toml`:
 
 ```toml
 [rocksmith]
 in = "Scarlett"
 out = "BlackHole"
 rate = 48000
-blocksize = 128
 routes = ["2:1", "2:2"]
 ```
-
-Allowed keys: `in`, `out`, `routes`, `rate`, `blocksize`, `latency`.
-Precedence is command line > preset > built-in default. `--route` on the
-command line *replaces* the preset's routes; it doesn't add to them.
 
 ```sh
 mkdir -p ~/.config/gaudioroute && cp presets.example.toml ~/.config/gaudioroute/presets.toml
@@ -105,97 +95,35 @@ gaudioroute presets           # list them
 gaudioroute --preset rocksmith
 ```
 
-### The meter
+`--route` on the command line replaces the preset's routes rather than adding
+to them.
 
-```
-gaudioroute  Scarlett Solo USB → BlackHole 2ch   0:12:04   Ctrl-C to stop
-rate 48,000 Hz (confirmed)  block 128  latency in 53.8 ms / out 10.7 ms
-xruns 0  (in overflow 0, out underflow 0)
+## Using it with Rocksmith
 
-  in 2 → out 1  [██████████████████░░░░░░░░░░░░]  -12.3 dBFS
-  in 2 → out 2  [██████████████████░░░░░░░░░░░░]  -12.3 dBFS
+1. Run `gaudioroute --preset rocksmith` and check that the meter moves when you
+   strum.
+2. Start Rocksmith **after** gaudioroute is running. Pick Microphone mode and
+   select BlackHole.
+3. If playing feels laggy, try `--latency 0.003` or `--latency 0`, and keep an
+   eye on the xrun counter. Rocksmith's own latency calibration also helps.
 
-  out 1         [██████████████████░░░░░░░░░░░░]  -12.3 dBFS  clips 0
-  out 2         [██████████████████░░░░░░░░░░░░]  -12.3 dBFS  clips 0
-```
-
-Bars span -60 to 0 dBFS, with a slow fall-off so short peaks stay visible.
-Output rows show the level *before* clipping, so an over reads above 0 dBFS.
-Ctrl-C stops the stream and prints a summary (runtime, xruns, clips, and any
-sample-rate events).
-
-## How the sample rate is enforced and verified
-
-This is what GarageBand got wrong, so gaudioroute never assumes the rate:
-
-1. **Before opening:** it checks that both devices list `--rate` among their
-   supported nominal rates.
-2. **When opening:** PortAudio gets `CoreAudioSettings(change_device_parameters=True,
-   fail_if_conversion_required=True)` for both devices. That sets the devices'
-   nominal rate, and if that's impossible the open fails instead of quietly
-   resampling.
-3. **After opening:** it confirms the stream's rate equals `--rate`, and reads
-   each device's `kAudioDevicePropertyNominalSampleRate` straight from
-   CoreAudio (via ctypes; `system_profiler` is the fallback). If either device
-   is at the wrong rate, gaudioroute exits with an error.
-4. **While running:** it rereads both nominal rates every 2 s. If another app
-   changes one, the meter shows a red warning with the device name and its
-   real rate. The event also goes in the exit summary.
-
-## Latency
-
-Two separate devices each run on their own clock, so PortAudio puts a ring
-buffer between them. Its size follows the `--latency` hint. Figures reported
-on the Scarlett Solo → BlackHole at 48 kHz / 128 frames:
-
-| `--latency` | reported in / out | xruns seen in testing |
-|---|---|---|
-| `low` (default) | ~54 ms / ~11 ms | none in 30 s |
-| `0.003` | ~30 ms / ~8 ms | not soak-tested |
-| `0` | ~16 ms / ~5 ms | 1 input overflow in 8 s |
-
-The reported input figure is PortAudio's worst-case estimate including that
-buffer. If Rocksmith feels late, try `--latency 0.003` or `--latency 0` and
-watch the xrun counter. Rocksmith's own latency calibration also helps.
-
-## Manual test plan (needs the hardware)
-
-1. **`gaudioroute list`.** Expect `Scarlett Solo USB` and `BlackHole 2ch`, each
-   with `2` in and `2` out.
-2. **`gaudioroute --preset rocksmith`** (after copying `presets.example.toml`).
-   Expect rows `in 2 → out 1` and `in 2 → out 2`. Strumming moves both bars to
-   roughly -30 to -6 dBFS, depending on the Scarlett's gain knob. At rest they
-   sit near the noise floor (around -60 dBFS or lower). The status line says
-   `48,000 Hz (confirmed)`.
-3. **Audio MIDI Setup** (while gaudioroute runs). Expect both Scarlett Solo USB
-   and BlackHole 2ch to show **48,000 Hz**.
-4. **QuickTime → File → New Audio Recording**, with BlackHole 2ch picked as
-   the input (the ⌄ next to the record button). Expect QuickTime's level meter
-   to move with the guitar.
-5. **Start Rocksmith *after* gaudioroute is running.** Pick Microphone mode and
-   select BlackHole. Expect the calibration screen to respond to strumming.
-6. **Soak test:** leave it running 30+ minutes at `--blocksize 128`. Expect
-   the xrun counter to stay at or near 0. If it climbs steadily, try
-   `--latency high` or `--blocksize 256`. Steady growth over hours can also be
-   clock drift between the two devices (see the drift-free stretch goal).
-7. **Open GarageBand while gaudioroute runs.** If GarageBand moves BlackHole to
-   44.1 kHz, expect within about 2 s a red line
-   `!! BlackHole 2ch is at 44,100 Hz, not 48,000 Hz! Another app changed it…`,
-   and the rate line switching to `MISMATCH`. The input-overflow count rises
-   while the rates disagree.
+To check the signal without Rocksmith, start a new audio recording in QuickTime
+with BlackHole 2ch as the input. QuickTime's level meter should move with the
+guitar.
 
 ## Troubleshooting
 
-- **"No input signal for 10 s"** means either macOS microphone permission
-  (System Settings → Privacy & Security → Microphone → enable your terminal
-  app, then quit and reopen the terminal), the wrong input channel (the Solo's
-  instrument jack is input 2), or the Scarlett's gain knob is too low. Without
-  permission, macOS delivers exact digital silence, so the meter shows `-inf`.
+- **"No input signal for 10 s"**: the most likely cause is the microphone
+  permission (System Settings → Privacy & Security → Microphone → enable your
+  terminal app, then restart the terminal). It can also mean the wrong input
+  channel (the Solo's instrument jack is input 2) or the Scarlett's gain knob
+  being too low.
 - **"Couldn't open … without resampling"**: another app is holding a device
-  at a different rate. Quit it, or set 48 kHz in Audio MIDI Setup, and retry.
-- **Device unplugged mid-run:** gaudioroute notices within about 2 s, prints which
-  device disappeared, and exits with code 1.
-- **Ambiguous device name:** gaudioroute lists the matches; use more of the name.
+  at a different rate. Quit that app, or set 48 kHz in Audio MIDI Setup, and
+  try again.
+- **Dropouts or crackles**: try `--latency high` or `--blocksize 256`.
+- **Ambiguous device name**: gaudioroute lists the matches. Type more of the
+  name.
 
 ## Development
 
@@ -203,26 +131,7 @@ watch the xrun counter. Rocksmith's own latency calibration also helps.
 .venv/bin/python -m pytest
 ```
 
-Layout:
-
-- `routing.py`: route parsing and validation, plus the realtime kernel
-  (`Router.process`). Pure numpy, fully unit-tested.
-- `devices.py` / `coreaudio.py`: device listing and name matching; nominal
-  rate reads through ctypes.
-- `engine.py`: the `sd.Stream`, the callback, and rate verification.
-- `session.py`: the run loop (meter, rate polling, silence hint, disconnect
-  detection, summary).
-- `meter.py`: terminal rendering.
-- `presets.py`: TOML presets and the CLI > preset > default merge.
-- `cli.py`: argparse and subcommands.
-
-The audio callback does no printing, locking, or numpy allocation. Routing is
-one `np.matmul` into PortAudio's output buffer through a precomputed gain
-matrix, and peaks and clip counts go into preallocated arrays that the meter
-thread reads. One block takes ~13 µs, against a budget of 2.7 ms at
-128 frames / 48 kHz.
-
-## Not done yet (stretch goals)
+## Not done yet
 
 - Drift-free mode with a private aggregate device.
 - `launchd` agent to start a preset at login.
